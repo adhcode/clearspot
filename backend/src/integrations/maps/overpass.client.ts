@@ -6,7 +6,7 @@ import { OverpassResponse } from './types/location-context.types';
 export class OverpassClient {
   private readonly logger = new Logger(OverpassClient.name);
   private readonly apiUrl: string;
-  private readonly requestTimeout = 30000;
+  private readonly requestTimeout = 15000; // Reduced from 30s to 15s
 
   constructor(private configService: ConfigService) {
     this.apiUrl = this.configService.get<string>(
@@ -61,6 +61,8 @@ export class OverpassClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+          'User-Agent': 'ClearSpot-Backend/1.0',
         },
         body: `data=${encodeURIComponent(query)}`,
         signal: controller.signal,

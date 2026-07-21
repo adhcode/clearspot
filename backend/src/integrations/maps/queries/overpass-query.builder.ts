@@ -1,5 +1,7 @@
 import { SEARCH_RADII, OVERPASS_TAGS } from '../constants/search-radii.constants';
 
+type TagConfig = { key: string; value: string | null };
+
 export class OverpassQueryBuilder {
   static buildLocationQuery(latitude: number, longitude: number): string {
     const queries: string[] = [];
@@ -51,26 +53,27 @@ export class OverpassQueryBuilder {
 
     // Waterways
     queries.push(
-      this.buildWaterwayQuery(latitude, longitude, SEARCH_RADII.WATERWAYS),
+      this.buildRadiusQuery(latitude, longitude, SEARCH_RADII.WATERWAYS, OVERPASS_TAGS.WATERWAYS),
     );
 
-    return `[out:json][timeout:25];(${queries.join('')});out center;`;
+    // Natural water bodies
+    queries.push(
+      this.buildRadiusQuery(latitude, longitude, SEARCH_RADII.WATERWAYS, {
+        key: 'natural',
+        value: 'water',
+      }),
+    );
+
+    return `[out:json][timeout:15];(${queries.join('')});out center;`;
   }
 
   private static buildRadiusQuery(
     latitude: number,
     longitude: number,
     radius: number,
-    tag: string,
+    tag: TagConfig,
   ): string {
-    return `node["${tag}"](around:${radius},${latitude},${longitude});way["${tag}"](around:${radius},${latitude},${longitude});`;
-  }
-
-  private static buildWaterwayQuery(
-    latitude: number,
-    longitude: number,
-    radius: number,
-  ): string {
-    return `way["waterway"](around:${radius},${latitude},${longitude});node["natural"="water"](around:${radius},${latitude},${longitude});`;
+    const tagFilter = tag.value ? `["${tag.key}"="${tag.value}"]` : `["${tag.key}"]`;
+    return `node${tagFilter}(around:${radius},${latitude},${longitude});way${tagFilter}(around:${radius},${latitude},${longitude});`;
   }
 }
