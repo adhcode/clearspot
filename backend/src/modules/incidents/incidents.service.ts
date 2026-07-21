@@ -1,8 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Incident, IncidentStatus, Role } from '@prisma/client';
+import { Incident, IncidentStatus, IncidentSeverity, Role } from '@prisma/client';
 import { PrismaService } from '@database/prisma.service';
 import { GeminiService } from '@integrations/gemini/gemini.service';
-import { IncidentNotFoundException, UnauthorizedAccessException } from '@common/exceptions/domain.exceptions';
+import {
+  IncidentNotFoundException,
+  UnauthorizedAccessException,
+} from '@common/exceptions/domain.exceptions';
 import { createPaginatedResponse, PaginatedResponse } from '@common/types/pagination.types';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentDto } from './dto/update-incident.dto';
@@ -19,10 +22,11 @@ export class IncidentsService {
   ) {}
 
   async create(dto: CreateIncidentDto, userId?: string): Promise<Incident> {
-    const analysis = await this.geminiService.analyzeIncident(
+    const analysis = await this.geminiService.analyzeIllegalDump(
       dto.title,
       dto.description,
       dto.address,
+      dto.imageUrls[0],
     );
 
     const incident = await this.prisma.incident.create({
@@ -37,19 +41,45 @@ export class IncidentsService {
         guestEmail: dto.guestEmail || null,
         guestPhone: dto.guestPhone || null,
         status: IncidentStatus.REPORTED,
-        severity: analysis?.severity || 'MEDIUM',
+        severity: this.mapPriorityToSeverity(analysis?.priority),
         aiConfidence: analysis?.confidence || null,
         aiRecommendation: analysis
-          ? `${analysis.recommendation}\n\nReasoning: ${analysis.reasoning}`
+          ? this.formatAiRecommendation(analysis)
           : null,
       },
     });
 
     this.logger.log(
-      `Incident created: ${incident.id} by ${userId ? 'user' : 'guest'} - AI: ${analysis?.severity || 'N/A'} (${analysis?.confidence || 0})`,
+      `Incident created: ${incident.id} by ${userId ? 'user' : 'guest'} - AI Priority: ${analysis?.priority || 'N/A'}, Confidence: ${analysis?.confidence || 0}`,
     );
 
     return incident;
+  }
+
+  private mapPriorityToSeverity(
+    priority?: 'Low' | 'Medium' | 'High' | 'Critical',
+  ): IncidentSeverity {
+    const mapping = {
+      Low: IncidentSeverity.LOW,
+      Medium: IncidentSeverity.MEDIUM,
+      High: IncidentSeverity.HIGH,
+      Critical: IncidentSeverity.CRITICAL,
+    };
+
+    return priority ? mapping[priority] : IncidentSeverity.MEDIUM;
+  }
+
+  private formatAiRecommendation(analysis: {
+    wasteType: string;
+    estimatedSize: string;
+    estimatedCleanupCost: number;
+    reasoning: string;
+  }): string {
+    return `Waste Type: ${analysis.wasteType}
+Estimated Size: ${analysis.estimatedSize}
+Estimated Cleanup Cost: ₦${analysis.estimatedCleanupCost.toLocaleString()}
+
+${analysis.reasoning}`;
   }
 
   async findAll(query: QueryIncidentsDto): Promise<PaginatedResponse<Incident>> {

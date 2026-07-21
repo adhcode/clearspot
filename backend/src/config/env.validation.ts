@@ -68,6 +68,10 @@ class EnvironmentVariables {
   GEMINI_API_KEY!: string;
 
   @IsString()
+  @IsOptional()
+  GEMINI_MODEL: string = 'gemini-2.0-flash-exp';
+
+  @IsString()
   MONNIFY_API_KEY!: string;
 
   @IsString()
