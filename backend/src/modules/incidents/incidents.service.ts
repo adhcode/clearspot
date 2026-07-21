@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Incident, IncidentStatus, Role } from '@prisma/client';
 import { PrismaService } from '@database/prisma.service';
+import { GeminiService } from '@integrations/gemini/gemini.service';
 import { IncidentNotFoundException, UnauthorizedAccessException } from '@common/exceptions/domain.exceptions';
 import { createPaginatedResponse, PaginatedResponse } from '@common/types/pagination.types';
 import { CreateIncidentDto } from './dto/create-incident.dto';
@@ -12,9 +13,18 @@ import { ReviewIncidentDto } from './dto/review-incident.dto';
 export class IncidentsService {
   private readonly logger = new Logger(IncidentsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private geminiService: GeminiService,
+  ) {}
 
   async create(dto: CreateIncidentDto, userId?: string): Promise<Incident> {
+    const analysis = await this.geminiService.analyzeIncident(
+      dto.title,
+      dto.description,
+      dto.address,
+    );
+
     const incident = await this.prisma.incident.create({
       data: {
         title: dto.title,
@@ -27,10 +37,17 @@ export class IncidentsService {
         guestEmail: dto.guestEmail || null,
         guestPhone: dto.guestPhone || null,
         status: IncidentStatus.REPORTED,
+        severity: analysis?.severity || 'MEDIUM',
+        aiConfidence: analysis?.confidence || null,
+        aiRecommendation: analysis
+          ? `${analysis.recommendation}\n\nReasoning: ${analysis.reasoning}`
+          : null,
       },
     });
 
-    this.logger.log(`Incident created: ${incident.id} by ${userId ? 'user' : 'guest'}`);
+    this.logger.log(
+      `Incident created: ${incident.id} by ${userId ? 'user' : 'guest'} - AI: ${analysis?.severity || 'N/A'} (${analysis?.confidence || 0})`,
+    );
 
     return incident;
   }
