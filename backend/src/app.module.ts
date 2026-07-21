@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { IncidentsModule } from './modules/incidents/incidents.module';
 import { validateEnvironment } from './config/env.validation';
 
 @Module({
@@ -39,6 +40,7 @@ import { validateEnvironment } from './config/env.validation';
     ]),
     DatabaseModule,
     AuthModule,
+    IncidentsModule,
   ],
 })
 export class AppModule {}
