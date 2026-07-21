@@ -6,6 +6,7 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { IncidentsModule } from './modules/incidents/incidents.module';
 import { StorageModule } from './integrations/storage/storage.module';
+import { MapsModule } from './integrations/maps/maps.module';
 import { validateEnvironment } from './config/env.validation';
 
 @Module({
@@ -43,6 +44,7 @@ import { validateEnvironment } from './config/env.validation';
     AuthModule,
     IncidentsModule,
     StorageModule,
+    MapsModule,
   ],
 })
 export class AppModule {}

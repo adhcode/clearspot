@@ -17,12 +17,22 @@ GEMINI_MODEL=gemini-flash-latest  # This model works with free tier!
 - Correctly hits v1beta API
 - AI analysis functioning properly
 
-Restart server after updating `.env`:
+### 2. OpenStreetMap Overpass API ✅ WORKING
+
+No API key required! Uses public Overpass API.
+
+Add to `.env` (optional, has default):
 ```bash
-pnpm start:dev
+OVERPASS_API_URL=https://overpass-api.de/api/interpreter
 ```
 
-### 2. Cloudflare R2
+**Status**: ✅ Integration working
+- Retrieves nearby geographical features
+- Supports schools, hospitals, clinics, markets, bus stops, roads, waterways
+- Haversine distance calculation
+- Graceful fallback on failure
+
+### 3. Cloudflare R2
 
 Create R2 bucket: https://dash.cloudflare.com/r2
 
@@ -33,6 +43,11 @@ R2_ACCESS_KEY_ID=your-access-key
 R2_SECRET_ACCESS_KEY=your-secret-key
 R2_BUCKET_NAME=clearspot-uploads
 R2_PUBLIC_URL=https://pub-xxxxx.r2.dev
+```
+
+Restart server after updating `.env`:
+```bash
+pnpm start:dev
 ```
 
 ## Test Endpoints

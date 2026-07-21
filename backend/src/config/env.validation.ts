@@ -71,6 +71,10 @@ class EnvironmentVariables {
   @IsOptional()
   GEMINI_MODEL: string = 'gemini-flash-latest';
 
+  @IsUrl()
+  @IsOptional()
+  OVERPASS_API_URL: string = 'https://overpass-api.de/api/interpreter';
+
   @IsString()
   MONNIFY_API_KEY!: string;
 
