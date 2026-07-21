@@ -92,8 +92,6 @@ model Incident {
   guestPhone      String?           @map("guest_phone")
   totalFunding    Decimal           @default(0) @map("total_funding") @db.Decimal(10, 2)
   fundingGoal     Decimal?          @map("funding_goal") @db.Decimal(10, 2)
-  aiConfidence    Float?            @map("ai_confidence")
-  aiRecommendation String?          @map("ai_recommendation") @db.Text
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")
 
@@ -101,12 +99,38 @@ model Incident {
   contributions   Contribution[]
   reviews         IncidentReview[]
   assignments     IncidentAssignment[]
+  assessment      IncidentAssessment?
 
   @@index([status])
   @@index([reporterId])
   @@index([createdAt])
   @@index([guestEmail])
   @@map("incidents")
+}
+
+model IncidentAssessment {
+  id                    String            @id @default(cuid())
+  incidentId            String            @unique @map("incident_id")
+  score                 Int
+  priority              IncidentSeverity
+  estimatedCleanupCost  Decimal           @map("estimated_cleanup_cost") @db.Decimal(10, 2)
+  aiConfidence          Float?            @map("ai_confidence")
+  reasons               String[]
+  recommendations       String[]
+  visualAnalysis        Json?             @map("visual_analysis")
+  locationContext       Json              @map("location_context")
+  historicalContext     Json              @map("historical_context")
+  assessmentVersion     String            @default("1.0.0") @map("assessment_version")
+  generatedAt           DateTime          @map("generated_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  incident              Incident          @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+  @@index([priority])
+  @@index([generatedAt])
+  @@map("incident_assessments")
 }
 
 model Contribution {

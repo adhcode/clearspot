@@ -8,6 +8,7 @@ import { LocationAssessmentScorer } from './scoring/location-assessment.scorer';
 import { HistoricalAssessmentScorer } from './scoring/historical-assessment.scorer';
 import { RecommendationGenerator } from './scoring/recommendation.generator';
 import { IncidentHistoryService } from './services/incident-history.service';
+import { IncidentAssessmentRepository } from './repositories/incident-assessment.repository';
 
 @Module({
   imports: [DatabaseModule, MapsModule, GeminiModule],
@@ -18,7 +19,12 @@ import { IncidentHistoryService } from './services/incident-history.service';
     HistoricalAssessmentScorer,
     RecommendationGenerator,
     IncidentHistoryService,
+    IncidentAssessmentRepository,
   ],
-  exports: [EnvironmentalAssessmentService, IncidentHistoryService],
+  exports: [
+    EnvironmentalAssessmentService,
+    IncidentHistoryService,
+    IncidentAssessmentRepository,
+  ],
 })
 export class EnvironmentalAssessmentModule {}
