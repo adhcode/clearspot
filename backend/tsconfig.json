@@ -26,6 +26,7 @@
     "paths": {
       "@common/*": ["src/common/*"],
       "@config/*": ["src/config/*"],
+      "@core/*": ["src/core/*"],
       "@database/*": ["src/database/*"],
       "@integrations/*": ["src/integrations/*"],
       "@modules/*": ["src/modules/*"]

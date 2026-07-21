@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Incident, IncidentStatus, IncidentSeverity, Role } from '@prisma/client';
 import { PrismaService } from '@database/prisma.service';
 import { GeminiService } from '@integrations/gemini/gemini.service';
+import { OverpassService } from '@integrations/maps/overpass.service';
+import { EnvironmentalAssessmentService } from '@core/environmental-assessment/environmental-assessment.service';
+import { IncidentHistoryService } from '@core/environmental-assessment/services/incident-history.service';
 import {
   IncidentNotFoundException,
   UnauthorizedAccessException,
@@ -19,16 +22,37 @@ export class IncidentsService {
   constructor(
     private prisma: PrismaService,
     private geminiService: GeminiService,
+    private overpassService: OverpassService,
+    private assessmentService: EnvironmentalAssessmentService,
+    private historyService: IncidentHistoryService,
   ) {}
 
   async create(dto: CreateIncidentDto, userId?: string): Promise<Incident> {
-    const analysis = await this.geminiService.analyzeIllegalDump(
+    this.logger.log(
+      `Creating incident at ${dto.latitude},${dto.longitude} by ${userId || 'guest'}`,
+    );
+
+    // Step 1: Get AI visual analysis
+    const aiAnalysis = await this.geminiService.analyzeIllegalDump(
       dto.title,
       dto.description,
       dto.address,
       dto.imageUrls[0],
     );
 
+    // Step 2: Get geographical context
+    const locationContext = await this.overpassService.analyzeLocation(
+      dto.latitude,
+      dto.longitude,
+    );
+
+    // Step 3: Get historical context
+    const historicalContext = await this.historyService.getHistoricalContext(
+      dto.latitude,
+      dto.longitude,
+    );
+
+    // Step 4: Create incident record
     const incident = await this.prisma.incident.create({
       data: {
         title: dto.title,
@@ -41,45 +65,80 @@ export class IncidentsService {
         guestEmail: dto.guestEmail || null,
         guestPhone: dto.guestPhone || null,
         status: IncidentStatus.REPORTED,
-        severity: this.mapPriorityToSeverity(analysis?.priority),
-        aiConfidence: analysis?.confidence || null,
-        aiRecommendation: analysis
-          ? this.formatAiRecommendation(analysis)
-          : null,
+        severity: IncidentSeverity.MEDIUM, // Temporary, will be updated
+      },
+    });
+
+    // Step 5: Perform comprehensive environmental assessment
+    const assessment = await this.assessmentService.performAssessment(
+      incident,
+      aiAnalysis,
+      locationContext,
+      historicalContext,
+    );
+
+    // Step 6: Update incident with assessment results
+    const updatedIncident = await this.prisma.incident.update({
+      where: { id: incident.id },
+      data: {
+        severity: this.mapPriorityToSeverity(assessment.priority),
+        aiConfidence: aiAnalysis?.confidence || null,
+        aiRecommendation: this.formatAssessmentRecommendation(assessment, aiAnalysis),
       },
     });
 
     this.logger.log(
-      `Incident created: ${incident.id} by ${userId ? 'user' : 'guest'} - AI Priority: ${analysis?.priority || 'N/A'}, Confidence: ${analysis?.confidence || 0}`,
+      `Incident created: ${incident.id} - Priority: ${assessment.priority}, Score: ${assessment.score}, Severity: ${updatedIncident.severity}`,
     );
 
-    return incident;
+    return updatedIncident;
   }
 
   private mapPriorityToSeverity(
-    priority?: 'Low' | 'Medium' | 'High' | 'Critical',
+    priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
   ): IncidentSeverity {
     const mapping = {
-      Low: IncidentSeverity.LOW,
-      Medium: IncidentSeverity.MEDIUM,
-      High: IncidentSeverity.HIGH,
-      Critical: IncidentSeverity.CRITICAL,
+      LOW: IncidentSeverity.LOW,
+      MEDIUM: IncidentSeverity.MEDIUM,
+      HIGH: IncidentSeverity.HIGH,
+      CRITICAL: IncidentSeverity.CRITICAL,
     };
 
-    return priority ? mapping[priority] : IncidentSeverity.MEDIUM;
+    return mapping[priority];
   }
 
-  private formatAiRecommendation(analysis: {
-    wasteType: string;
-    estimatedSize: string;
-    estimatedCleanupCost: number;
-    reasoning: string;
-  }): string {
-    return `Waste Type: ${analysis.wasteType}
-Estimated Size: ${analysis.estimatedSize}
-Estimated Cleanup Cost: ₦${analysis.estimatedCleanupCost.toLocaleString()}
+  private formatAssessmentRecommendation(
+    assessment: {
+      score: number;
+      priority: string;
+      reasons: string[];
+      estimatedCleanupCost: number;
+    },
+    aiAnalysis: { wasteType: string; estimatedSize: string } | null,
+  ): string {
+    const sections: string[] = [];
 
-${analysis.reasoning}`;
+    // AI Analysis if available
+    if (aiAnalysis) {
+      sections.push(`Waste Type: ${aiAnalysis.wasteType}`);
+      sections.push(`Estimated Size: ${aiAnalysis.estimatedSize}`);
+    }
+
+    // Assessment details
+    sections.push(
+      `Estimated Cleanup Cost: ₦${assessment.estimatedCleanupCost.toLocaleString()}`,
+    );
+    sections.push(`Assessment Score: ${assessment.score}/100`);
+    sections.push(`Priority: ${assessment.priority}`);
+    sections.push('');
+
+    // Assessment reasons
+    sections.push('Assessment Factors:');
+    assessment.reasons.forEach((reason) => {
+      sections.push(`• ${reason}`);
+    });
+
+    return sections.join('\n');
   }
 
   async findAll(query: QueryIncidentsDto): Promise<PaginatedResponse<Incident>> {
