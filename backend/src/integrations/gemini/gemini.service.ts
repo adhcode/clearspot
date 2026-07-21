@@ -22,7 +22,7 @@ export class GeminiService implements OnModuleInit {
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-2.0-flash-exp');
+    this.modelName = this.configService.get<string>('GEMINI_MODEL', 'gemini-1.5-flash');
 
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY is required but not configured');
@@ -31,12 +31,6 @@ export class GeminiService implements OnModuleInit {
     this.genAI = new GoogleGenerativeAI(apiKey);
     this.model = this.genAI.getGenerativeModel({
       model: this.modelName,
-      generationConfig: {
-        temperature: 0.3,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 1024,
-      },
     });
   }
 
@@ -90,7 +84,7 @@ export class GeminiService implements OnModuleInit {
       const latency = Date.now() - startTime;
       const err = error as Error;
       this.logger.error(
-        `Analysis failed - Model: ${this.modelName}, Latency: ${latency}ms, Error: ${err.message}`,
+        `Analysis failed - Model: ${this.modelName}, Latency: ${latency}ms, Error: ${err.message}, Stack: ${err.stack?.substring(0, 200)}`,
       );
 
       return null;
@@ -214,12 +208,13 @@ Provide your analysis:`;
 
         if (attempt < this.maxRetries - 1) {
           const delay = this.initialRetryDelay * Math.pow(2, attempt);
-          this.logger.warn(`Retry attempt ${attempt + 1} after ${delay}ms`);
+          this.logger.warn(`Retry attempt ${attempt + 1} after ${delay}ms - Error: ${lastError.message}`);
           await this.sleep(delay);
         }
       }
     }
 
+    this.logger.error(`All retries failed - Last error: ${lastError!.message}`);
     throw new GeminiAnalysisException('Max retries exceeded', lastError!);
   }
 

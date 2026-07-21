@@ -69,7 +69,7 @@ class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  GEMINI_MODEL: string = 'gemini-2.0-flash-exp';
+  GEMINI_MODEL: string = 'gemini-flash-latest';
 
   @IsString()
   MONNIFY_API_KEY!: string;

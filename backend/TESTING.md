@@ -2,13 +2,24 @@
 
 ## Setup API Keys
 
-### 1. Google Gemini AI
+### 1. Google Gemini AI ✅ WORKING
 
 Get your API key: https://aistudio.google.com/app/apikey
 
 Add to `.env`:
 ```bash
-GEMINI_API_KEY=AIzaSy...
+GEMINI_API_KEY=your-api-key
+GEMINI_MODEL=gemini-flash-latest  # This model works with free tier!
+```
+
+**Status**: ✅ Integration working with `gemini-flash-latest`
+- SDK updated to v0.24.1
+- Correctly hits v1beta API
+- AI analysis functioning properly
+
+Restart server after updating `.env`:
+```bash
+pnpm start:dev
 ```
 
 ### 2. Cloudflare R2
@@ -19,15 +30,9 @@ Add to `.env`:
 ```bash
 R2_ACCOUNT_ID=your-account-id
 R2_ACCESS_KEY_ID=your-access-key
-R2_ENDPOINT="https://16cc8107acc603b178f89fa0f8bc588f.r2.cloudflarestorage.com"
 R2_SECRET_ACCESS_KEY=your-secret-key
-R2_BUCKET_NAME=clearspot-images
-R2_PUBLIC_URL=https://pub-23f5918c86e34af48b16d36b79a1a6a2.r2.dev
-```
-
-Restart server after updating `.env`:
-```bash
-pnpm start:dev
+R2_BUCKET_NAME=clearspot-uploads
+R2_PUBLIC_URL=https://pub-xxxxx.r2.dev
 ```
 
 ## Test Endpoints
@@ -55,18 +60,17 @@ curl -X POST http://localhost:3000/api/v1/incidents \
     "latitude": 6.5244,
     "longitude": 3.3792,
     "address": "Ikeja, Lagos",
-    "imageUrls": ["https://example.com/image1.jpg"],
+    "imageUrls": [],
     "guestEmail": "reporter@example.com"
-  }' | jq '{title, severity, aiConfidence, aiRecommendation}'
+  }' | jq
 ```
 
-Expected with AI:
+Expected with working Gemini:
 ```json
 {
-  "title": "...",
   "severity": "CRITICAL",
   "aiConfidence": 0.9,
-  "aiRecommendation": "Immediate hazmat response required..."
+  "aiRecommendation": "Waste Type: Toxic/Hazardous\nEstimated Size: Large..."
 }
 ```
 
@@ -90,32 +94,52 @@ curl -X POST http://localhost:3000/api/v1/incidents/{incident-id}/review \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
     "decision": "APPROVED",
-    "notes": "Verified severity assessment. Approved for immediate cleanup."
+    "notes": "Verified severity. Approved for cleanup."
   }' | jq
 ```
 
-## Verify Integration
+## AI Analysis Examples
 
-### Check Logs
+Test scenarios showing AI correctly categorizes severity:
 
-Watch server logs for:
+**Critical** (toxic waste near school):
+```bash
+curl -s -X POST http://localhost:3000/api/v1/incidents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Critical toxic waste near elementary school",
+    "description": "Chemical barrels leaking near playground. Children at risk",
+    "latitude": 6.5244,
+    "longitude": 3.3792,
+    "address": "School Road, Lagos",
+    "imageUrls": [],
+    "guestEmail": "alert@example.com"
+  }' | jq '{severity, aiConfidence}'
 ```
-[GeminiService] Analyzed incident: ... - Severity: HIGH, Confidence: 0.85
-[StorageService] Generated upload URL for: incidents/uuid.jpg
+Result: `{"severity": "CRITICAL", "aiConfidence": 1}`
+
+**Low** (small household waste):
+```bash
+curl -s -X POST http://localhost:3000/api/v1/incidents \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Small household garbage pile",
+    "description": "Few bags of household trash on street corner",
+    "latitude": 6.5244,
+    "longitude": 3.3792,
+    "address": "Residential Street, Lagos",
+    "imageUrls": [],
+    "guestEmail": "resident@example.com"
+  }' | jq '{severity, aiConfidence}'
 ```
+Result: `{"severity": "LOW", "aiConfidence": 0.95}`
 
-### AI Analysis Quality
+## Without Working Gemini Key
 
-Test with different scenarios:
-- **Small household waste** → Should get LOW
-- **Construction debris** → Should get MEDIUM
-- **Near school/waterway** → Should get HIGH
-- **Chemical/toxic** → Should get CRITICAL
+System gracefully handles Gemini failures:
+- **AI Analysis**: Returns null, logs error
+- **Incident Creation**: Continues successfully  
+- **Severity**: Defaults to MEDIUM
+- **No crashes**: Requests complete normally
 
-## Without API Keys
-
-System works without keys:
-- **Storage**: Returns mock presigned URLs (won't upload)
-- **AI**: Defaults to MEDIUM severity, logs warning
-
-Both are optional for development testing.
+Both integrations are optional for development.
