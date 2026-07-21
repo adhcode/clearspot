@@ -5,6 +5,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { IncidentsModule } from './modules/incidents/incidents.module';
+import { StorageModule } from './integrations/storage/storage.module';
 import { validateEnvironment } from './config/env.validation';
 
 @Module({
@@ -41,6 +42,7 @@ import { validateEnvironment } from './config/env.validation';
     DatabaseModule,
     AuthModule,
     IncidentsModule,
+    StorageModule,
   ],
 })
 export class AppModule {}
