@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# IDEs
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+.idea/
+*.sublime-workspace
+*.swp
+*.swo
+
+# Build
+dist/
+build/
+*.tsbuildinfo
+
+# Database
+*.sqlite
+*.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+.tmp
+temp/

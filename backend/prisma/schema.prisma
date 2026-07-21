@@ -1,0 +1,203 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CITIZEN
+  OFFICER
+  VENDOR
+  ADMIN
+}
+
+enum IncidentStatus {
+  REPORTED
+  UNDER_REVIEW
+  APPROVED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ContributionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum VendorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?   @map("password_hash")
+  firstName     String?   @map("first_name")
+  lastName      String?   @map("last_name")
+  phoneNumber   String?   @map("phone_number")
+  role          Role      @default(CITIZEN)
+  isActive      Boolean   @default(true) @map("is_active")
+  isGuest       Boolean   @default(false) @map("is_guest")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  incidents         Incident[]
+  contributions     Contribution[]
+  vendorProfile     Vendor?
+  incidentReviews   IncidentReview[]
+  incidentAssignments IncidentAssignment[]
+
+  @@map("users")
+}
+
+model Incident {
+  id              String            @id @default(cuid())
+  title           String
+  description     String
+  latitude        Float
+  longitude       Float
+  address         String
+  status          IncidentStatus    @default(REPORTED)
+  severity        IncidentSeverity  @default(MEDIUM)
+  imageUrls       String[]          @map("image_urls")
+  reporterId      String?           @map("reporter_id")
+  guestEmail      String?           @map("guest_email")
+  guestPhone      String?           @map("guest_phone")
+  totalFunding    Decimal           @default(0) @map("total_funding") @db.Decimal(10, 2)
+  fundingGoal     Decimal?          @map("funding_goal") @db.Decimal(10, 2)
+  aiConfidence    Float?            @map("ai_confidence")
+  aiRecommendation String?          @map("ai_recommendation") @db.Text
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  reporter        User?             @relation(fields: [reporterId], references: [id])
+  contributions   Contribution[]
+  reviews         IncidentReview[]
+  assignments     IncidentAssignment[]
+
+  @@index([status])
+  @@index([reporterId])
+  @@index([createdAt])
+  @@index([guestEmail])
+  @@map("incidents")
+}
+
+model Contribution {
+  id              String              @id @default(cuid())
+  incidentId      String              @map("incident_id")
+  contributorId   String?             @map("contributor_id")
+  contributorEmail String?            @map("contributor_email")
+  amount          Decimal             @db.Decimal(10, 2)
+  status          ContributionStatus  @default(PENDING)
+  paymentReference String?            @unique @map("payment_reference")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  incident        Incident            @relation(fields: [incidentId], references: [id])
+  contributor     User?               @relation(fields: [contributorId], references: [id])
+  payment         Payment?
+
+  @@index([incidentId])
+  @@index([contributorId])
+  @@index([status])
+  @@map("contributions")
+}
+
+model Payment {
+  id                  String          @id @default(cuid())
+  contributionId      String          @unique @map("contribution_id")
+  amount              Decimal         @db.Decimal(10, 2)
+  status              PaymentStatus   @default(PENDING)
+  providerReference   String?         @unique @map("provider_reference")
+  providerName        String          @default("monnify") @map("provider_name")
+  providerResponse    Json?           @map("provider_response")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  contribution        Contribution    @relation(fields: [contributionId], references: [id])
+
+  @@index([status])
+  @@index([providerReference])
+  @@map("payments")
+}
+
+model Vendor {
+  id                String        @id @default(cuid())
+  userId            String        @unique @map("user_id")
+  companyName       String        @map("company_name")
+  companyAddress    String        @map("company_address")
+  taxId             String?       @map("tax_id")
+  businessLicense   String?       @map("business_license")
+  status            VendorStatus  @default(PENDING)
+  rating            Float?        @default(0)
+  completedJobs     Int           @default(0) @map("completed_jobs")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  user              User          @relation(fields: [userId], references: [id])
+  assignments       IncidentAssignment[]
+
+  @@index([status])
+  @@map("vendors")
+}
+
+model IncidentReview {
+  id              String          @id @default(cuid())
+  incidentId      String          @map("incident_id")
+  reviewerId      String          @map("reviewer_id")
+  decision        IncidentStatus
+  notes           String?         @db.Text
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  incident        Incident        @relation(fields: [incidentId], references: [id])
+  reviewer        User            @relation(fields: [reviewerId], references: [id])
+
+  @@index([incidentId])
+  @@index([reviewerId])
+  @@map("incident_reviews")
+}
+
+model IncidentAssignment {
+  id              String          @id @default(cuid())
+  incidentId      String          @map("incident_id")
+  vendorId        String          @map("vendor_id")
+  assignedById    String          @map("assigned_by_id")
+  assignedAt      DateTime        @default(now()) @map("assigned_at")
+  completedAt     DateTime?       @map("completed_at")
+  notes           String?         @db.Text
+
+  incident        Incident        @relation(fields: [incidentId], references: [id])
+  vendor          Vendor          @relation(fields: [vendorId], references: [id])
+  assignedBy      User            @relation(fields: [assignedById], references: [id])
+
+  @@index([incidentId])
+  @@index([vendorId])
+  @@map("incident_assignments")
+}
