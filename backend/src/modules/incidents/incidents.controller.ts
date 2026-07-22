@@ -9,14 +9,10 @@ import { Public } from '@modules/auth/decorators/public.decorator';
 import { Roles } from '@common/decorators/roles.decorator';
 import { RolesGuard } from '@common/guards/roles.guard';
 import { CurrentUser, JwtPayload } from '@common/decorators/current-user.decorator';
-import { AssessmentRetrievalService } from '@core/environmental-assessment/services/assessment-retrieval.service';
 
 @Controller('incidents')
 export class IncidentsController {
-  constructor(
-    private readonly incidentsService: IncidentsService,
-    private readonly assessmentRetrievalService: AssessmentRetrievalService,
-  ) {}
+  constructor(private readonly incidentsService: IncidentsService) {}
 
   @Public()
   @Post()
@@ -34,12 +30,6 @@ export class IncidentsController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.incidentsService.findOne(id);
-  }
-
-  @Public()
-  @Get(':id/assessment')
-  async getAssessment(@Param('id') id: string) {
-    return this.assessmentRetrievalService.getLatestAssessment(id);
   }
 
   @Patch(':id')
