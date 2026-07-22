@@ -10,6 +10,99 @@ export class IncidentAssessmentRepository {
   constructor(private prisma: PrismaService) {}
 
   /**
+   * Create a new incident assessment
+   * Used when creating an incident for the first time
+   */
+  async createAssessment(data: AssessmentPersistenceData): Promise<IncidentAssessment> {
+    const startTime = Date.now();
+
+    try {
+      const visualAnalysis = data.visualAnalysis
+        ? JSON.parse(JSON.stringify(data.visualAnalysis))
+        : null;
+      const locationContext = JSON.parse(JSON.stringify(data.locationContext));
+      const historicalContext = JSON.parse(JSON.stringify(data.historicalContext));
+
+      const assessment = await this.prisma.incidentAssessment.create({
+        data: {
+          incidentId: data.incidentId,
+          score: data.score,
+          priority: data.priority,
+          estimatedCleanupCost: data.estimatedCleanupCost,
+          aiConfidence: data.aiConfidence,
+          reasons: data.reasons,
+          recommendations: data.recommendations,
+          visualAnalysis,
+          locationContext,
+          historicalContext,
+          assessmentVersion: data.assessmentVersion,
+          generatedAt: data.generatedAt,
+        },
+      });
+
+      const latency = Date.now() - startTime;
+      this.logger.log(
+        `Assessment created for incident ${data.incidentId} - Priority: ${data.priority}, Score: ${data.score}, Latency: ${latency}ms`,
+      );
+
+      return assessment;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(
+        `Failed to create assessment for incident ${data.incidentId}: ${err.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing incident assessment
+   * Used when re-analyzing an incident
+   */
+  async updateAssessment(data: AssessmentPersistenceData): Promise<IncidentAssessment> {
+    const startTime = Date.now();
+
+    try {
+      const visualAnalysis = data.visualAnalysis
+        ? JSON.parse(JSON.stringify(data.visualAnalysis))
+        : null;
+      const locationContext = JSON.parse(JSON.stringify(data.locationContext));
+      const historicalContext = JSON.parse(JSON.stringify(data.historicalContext));
+
+      const assessment = await this.prisma.incidentAssessment.update({
+        where: { incidentId: data.incidentId },
+        data: {
+          score: data.score,
+          priority: data.priority,
+          estimatedCleanupCost: data.estimatedCleanupCost,
+          aiConfidence: data.aiConfidence,
+          reasons: data.reasons,
+          recommendations: data.recommendations,
+          visualAnalysis,
+          locationContext,
+          historicalContext,
+          assessmentVersion: data.assessmentVersion,
+          generatedAt: data.generatedAt,
+          updatedAt: new Date(),
+        },
+      });
+
+      const latency = Date.now() - startTime;
+      this.logger.log(
+        `Assessment updated for incident ${data.incidentId} - Priority: ${data.priority}, Score: ${data.score}, Latency: ${latency}ms`,
+      );
+
+      return assessment;
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(
+        `Failed to update assessment for incident ${data.incidentId}: ${err.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
    * Create or update an incident assessment
    * Uses upsert to ensure exactly one assessment per incident
    */
@@ -18,7 +111,7 @@ export class IncidentAssessmentRepository {
 
     try {
       // Convert typed objects to JSON-serializable format
-      const visualAnalysis = data.visualAnalysis 
+      const visualAnalysis = data.visualAnalysis
         ? JSON.parse(JSON.stringify(data.visualAnalysis))
         : null;
       const locationContext = JSON.parse(JSON.stringify(data.locationContext));
@@ -73,11 +166,22 @@ export class IncidentAssessmentRepository {
 
   /**
    * Get the latest assessment for an incident
+   * This is the primary method for retrieving assessment data
    */
-  async findByIncidentId(incidentId: string): Promise<IncidentAssessment | null> {
+  async findLatestByIncidentId(incidentId: string): Promise<IncidentAssessment | null> {
     return this.prisma.incidentAssessment.findUnique({
       where: { incidentId },
     });
+  }
+
+  /**
+   * Check if an assessment exists for an incident
+   */
+  async assessmentExists(incidentId: string): Promise<boolean> {
+    const count = await this.prisma.incidentAssessment.count({
+      where: { incidentId },
+    });
+    return count > 0;
   }
 
   /**

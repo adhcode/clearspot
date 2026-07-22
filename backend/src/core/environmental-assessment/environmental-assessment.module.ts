@@ -8,6 +8,7 @@ import { LocationAssessmentScorer } from './scoring/location-assessment.scorer';
 import { HistoricalAssessmentScorer } from './scoring/historical-assessment.scorer';
 import { RecommendationGenerator } from './scoring/recommendation.generator';
 import { IncidentHistoryService } from './services/incident-history.service';
+import { AssessmentRetrievalService } from './services/assessment-retrieval.service';
 import { IncidentAssessmentRepository } from './repositories/incident-assessment.repository';
 
 @Module({
@@ -19,11 +20,13 @@ import { IncidentAssessmentRepository } from './repositories/incident-assessment
     HistoricalAssessmentScorer,
     RecommendationGenerator,
     IncidentHistoryService,
+    AssessmentRetrievalService,
     IncidentAssessmentRepository,
   ],
   exports: [
     EnvironmentalAssessmentService,
     IncidentHistoryService,
+    AssessmentRetrievalService,
     IncidentAssessmentRepository,
   ],
 })

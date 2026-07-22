@@ -147,6 +147,20 @@ export class EnvironmentalAssessmentService {
   }
 
   private transformLocationContext(locationContext: LocationContext): PersistedLocationContext {
+    // Determine source status based on whether any data was retrieved
+    const totalFeatures =
+      locationContext.schools.length +
+      locationContext.hospitals.length +
+      locationContext.clinics.length +
+      locationContext.markets.length +
+      locationContext.busStops.length +
+      locationContext.primaryRoads.length +
+      locationContext.trunkRoads.length +
+      locationContext.waterways.length;
+
+    const sourceStatus: 'SUCCESS' | 'FAILED' | 'PARTIAL' =
+      totalFeatures === 0 ? 'FAILED' : totalFeatures < 3 ? 'PARTIAL' : 'SUCCESS';
+
     return {
       schools: locationContext.schools.map((s) => ({
         name: s.name,
@@ -180,6 +194,7 @@ export class EnvironmentalAssessmentService {
         name: w.name,
         distanceInMeters: w.distanceInMeters,
       })),
+      sourceStatus,
     };
   }
 

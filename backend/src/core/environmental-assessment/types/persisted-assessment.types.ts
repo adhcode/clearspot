@@ -53,6 +53,7 @@ export interface PersistedLocationContext {
     name?: string;
     distanceInMeters: number;
   }>;
+  sourceStatus?: 'SUCCESS' | 'FAILED' | 'PARTIAL';
 }
 
 /**
